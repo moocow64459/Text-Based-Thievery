@@ -1,121 +1,150 @@
 import random
 
+# Game data
 rooms = {
-    'Outside': {'name': 'Outside', 'north': 'Dining Room',
+    'outside': {'name': 'Outside', 'north': 'dining room',
                 'text': 'You are outside and stare at the back door to the house.'},
 
-    'Dining Room': {'name': 'Dining Room', 'north': 'Living Room', 'west': 'Kitchen',
+    'dining room': {'name': 'Dining Room', 'north': 'living room', 'west': 'kitchen',
                     'contents': {'vase': 50, 'painting': 100},
-                    'West': 'Kitchen',
-                    'text': 'You are in the dining room. There is a vase and a painting in this room... They look '
-                            'valuable.\n'
-                            'The kitchen to your left and the living room is in front of you.'},
+                    'text': 'You are in the dining room. \n'
+                            'The kitchen is to your left and the living room is in front of you.'},
 
-    'Kitchen': {'name': 'Kitchen', 'east': 'Dining Room', 'contents': {'blender': 20, 'microwave': 30},
-                'text': 'You are in the kitchen. There is a blender and a microwave on the counter.\n'
+    'kitchen': {'name': 'Kitchen', 'east': 'dining room', 'contents': {'blender': 20, 'microwave': 30},
+                'text': 'You are in the kitchen. \n'
                         'The dining room is to your right.'},
 
-    'Living Room': {'name': 'Living Room', 'south': 'Dining Room', 'east': 'Stairs', 'west': 'Bathroom',
+    'living room': {'name': 'Living Room', 'south': 'dining room', 'east': 'stairs', 'west': 'bathroom',
                     'contents': {'tv': 80, 'sofa': 70},
-                    'text': 'You are in the Living room. There is a tv on the wall and a sofa.\n'
-                            'The dining room is behind you and there is a bathroom to your left and stairs to your '
+                    'text': 'You are in the living room. \n'
+                            'The dining room is behind you, and there is a bathroom to your left and stairs to your '
                             'right.'},
 
-    'Bathroom': {'name': 'Bathroom', 'east': 'Living Room', 'contents': {'candle': 10, 'shampoo': 15},
-                 'text': 'You are in the Bathroom. There is a candle on the counter and a bottle of shampoo.\n'
+    'bathroom': {'name': 'Bathroom', 'east': 'living room', 'contents': {'candle': 10, 'shampoo': 15},
+                 'text': 'You are in the bathroom. \n'
                          'The living room is to your right.'},
 
-    'Stairs': {'name': 'Stairs', 'north': 'Hallway', 'west': 'Living Room',
+    'stairs': {'name': 'Stairs', 'north': 'hallway', 'west': 'living room',
                'text': 'You are in the stairway. There is a hallway at the top that stretches out straight in front '
                        'of you.'},
 
-    'Hallway': {'name': 'Hallway', 'west': 'Bedroom', 'east': 'Kids Bedroom',
+    'hallway': {'name': 'Hallway', 'west': 'bedroom', 'east': 'kids bedroom',
                 'text': 'You are in the hallway. There are bedrooms on either side of you.'},
 
-    'Bedroom': {'name': 'Bedroom', 'east': 'Hallway', 'contents': {'jewelry': 70, 'watch': 50},
-                'text': 'You are in the bedroom. There is jewelry on the dresser and a watch.\n'
+    'bedroom': {'name': 'Bedroom', 'east': 'hallway', 'contents': {'jewelry': 70, 'watch': 50},
+                'text': 'You are in the bedroom. \n'
                         'The hallway is to your right.'},
 
-    'Kids Bedroom': {'name': 'Kids Bedroom', 'west': 'Hallway', 'contents': {'musicbox': 40, 'teddy bear': 25},
-                     'text': 'You are in a kids bedroom. There is a musicbox on a shelf and a teddy bear.\n'
+    'kids bedroom': {'name': 'Kids Bedroom', 'west': 'hallway', 'contents': {'musicbox': 40, 'teddy bear': 25},
+                     'text': 'You are in a kids bedroom. \n'
                              'The hallway is to your left.'},
 }
 
-directions = ['north', 'south', 'east', 'west']
-currentRoom = rooms['Outside']
+# Constants
+DIRECTIONS = ['north', 'south', 'east', 'west']
+ESCAPE_OPTIONS = ['window', 'front door']
+
+# Global variables
+currentRoom = rooms['outside']
 carrying = []
-escape = ['escape', 'Escape']
-escape_window = ['window']
-escape_fd = ['front door']  # villain
+police_location = random.choice(ESCAPE_OPTIONS)
+time_limit = random.randint(10, 20)
+time_spent = 0
 
-# instructions/intro
-print('You never meant to turn to this life, but sometimes to make a living you have to do some dirty jobs.\n'
-      'Steal as many objects as you can and escape without being caught by the police. \n'
-      'Use directions north, south, east, and west to navigate your way through a home. '
-      'The command \"steal [object name]\" will add the item to your duffle bag. Collect everything before the cops '
-      'arrive. \n'
-      'Enter \'escape\' at any time to escape the house with your bag. '
-      'Be careful which way you choose, though, the police are on their way... fast!')
+def update_room_description(room):
+    """Update room description to include contents if present."""
+    description = room['text']
+    if 'contents' in room and room['contents']:
+        contents = ', '.join(room['contents'].keys())
+        description += f" You see: {contents}."
+    return description
 
-while True:
+def display_intro():
+    """Display game introduction."""
+    print('You never meant to turn to this life, but sometimes to make a living you have to do some dirty jobs.\n'
+          'Steal as many objects as you can and escape without being caught by the police. \n'
+          'Use directions north, south, east, and west to navigate your way through a home. '
+          'The command "steal [object name]" will add the item to your duffle bag. Collect everything before the cops '
+          'arrive. \n'
+          'Enter "escape" at any time to escape the house with your bag. '
+          'Be careful which way you choose, though, the police are on their way... fast!')
 
-    # display current location
-    print()
-    print(format(currentRoom['text']))
-    # get input
-    command = input('\nWhat next? ').strip().lower()  # convert input to lowercase to avoid case sensitivity
+def move_player(command):
+    """Handle player movement."""
+    global currentRoom
+    if command in currentRoom:
+        currentRoom = rooms[currentRoom[command]]
+    else:
+        print("You can't go that way.")
 
-    # movement
-    if command in directions:
-        if command in currentRoom:
-            currentRoom = rooms[currentRoom[command]]
-        else:
-            print("You can't go that way.")
+def steal_item(command):
+    """Handle stealing items from a room."""
+    global carrying
+    item = command.split()[1]
+    if item in carrying:
+        print('You already stole this item!')
+    elif item in currentRoom.get('contents', {}):
+        carrying.append(item)
+        print(f'You stole the {item}!')
+        currentRoom['contents'] = {}  # Remove all items from the room's contents
+    else:
+        print('That object is not in this room.')
 
-    # get objects
-    elif command.split()[0] == 'steal':
-        item = command.split()[1]
-        if item in carrying:
-            print('You already stole this item!')
-
-        elif item in currentRoom['contents']:
-            if isinstance(currentRoom['contents'][item], dict):
-                print(f'There are multiple items in this room: {list(currentRoom["contents"].keys())}.')
-                choice = input('Which item do you want to steal? ').strip().lower()
-                if choice in currentRoom['contents']:
-                    carrying.append(choice)
-                    print(f'You stole the {choice}!')
-                    del currentRoom['contents'][choice]  # Remove the stolen item from the room's contents
-                else:
-                    print('Invalid choice.')
-            else:
-                carrying.append(item)
-                print(f'You stole the {item}!')
-                del currentRoom['contents'][item]  # Remove the stolen item from the room's contents
-        else:
-            print('That object is not in this room.')
-
-    # quit game
-    elif command in ('e', 'exit'):
-        break
-
-    # exit option
-    elif command in escape:
-        print('You hear the sirens closing in. There is not much time. How do you escape?')
-        print('Window or Front Door...?')
-
-    # Escape
-    elif command in escape_window:
+def check_escape(command):
+    """Handle escape attempt."""
+    if command == police_location:
+        print('The police are here! You are caught!')
+        print('Game over')
+    else:
         print('You escaped!')
-        if len(carrying) == 6:
-            print('and you have successfully burglarized the house!')
-            break
-        elif len(carrying) < 6:
+        if carrying:
+            print(f'and you have successfully burglarized the house! You stole: {", ".join(carrying)}')
+        else:
             print('but you have not successfully burglarized the house... better luck next time.')
+
+def main():
+    global time_spent
+    display_intro()
+
+    while True:
+        # Check if time limit is reached
+        if time_spent >= time_limit:
+            print('The police have arrived! You are caught!')
+            print('Game over')
             break
 
-    # Villain escape
-    elif command in escape_fd:
-        print('You were caught by the police!')
-        print('game over')
-        break
+        # Display current location
+        print()
+        print(update_room_description(currentRoom))
+
+        # Get input
+        command = input('\nWhat next? ').strip().lower()  # Convert input to lowercase to avoid case sensitivity
+        time_spent += 1
+
+        # Movement
+        if command in DIRECTIONS:
+            move_player(command)
+
+        # Steal items
+        elif command.startswith('steal '):
+            steal_item(command)
+
+        # Quit game
+        elif command in ('e', 'exit'):
+            break
+
+        # Escape option
+        elif command == 'escape':
+            print('You hear the sirens closing in. There is not much time. How do you escape?')
+            print('Window or Front Door...?')
+
+        # Escape
+        elif command in ESCAPE_OPTIONS:
+            check_escape(command)
+            break
+
+        else:
+            print('Invalid command. Try again.')
+
+if __name__ == "__main__":
+    main()
